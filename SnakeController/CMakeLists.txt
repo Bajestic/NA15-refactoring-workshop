@@ -17,6 +17,7 @@ enable_testing()
 set(TEST_SOURCES
     Tests/SnakeControllerTestSuite.cpp
     Tests/SnakeControllerPauseTestSuite.cpp
+    Tests/SnakeControllerWrongFoodLocation.cpp
 )
 
 set(TEST_HELPERS
