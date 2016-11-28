@@ -24,6 +24,7 @@ set(TEST_SOURCES
     Tests/SnakeControllerTestSuite.cpp
     Tests/SnakeControllerPauseTestSuite.cpp
     Tests/SnakeControllerWrongFoodLocation.cpp
+    Tests/SnakeControllerScoreIndTestSuite.cpp
 )
 
 set(TEST_HELPERS
