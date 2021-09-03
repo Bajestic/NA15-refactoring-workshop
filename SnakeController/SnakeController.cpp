@@ -155,7 +155,7 @@ void SnakeSegment::removeTailSegment()
     m_segments.pop_back();
 }
 
-void SnakeSegment::addHeadSegment(Segment const& newHead)
+void SnakeSegment::addHeadSegment(SnakeSegment::Segment const& newHead)
 {
     m_segments.push_front(newHead);
 
@@ -167,7 +167,7 @@ void SnakeSegment::addHeadSegment(Segment const& newHead)
     m_displayPort.send(std::make_unique<EventT<DisplayInd>>(placeNewHead));
 }
 
-void SnakeSegment::removeTailSegmentIfNotScored(Segment const& newHead)
+void SnakeSegment::removeTailSegmentIfNotScored(SnakeSegment::Segment const& newHead)
 {
     //if (std::make_pair(newHead.x, newHead.y) == m_foodPosition)
     if (std::make_pair(newHead.x, newHead.y) == world.getfoodPosition()) {
@@ -178,7 +178,7 @@ void SnakeSegment::removeTailSegmentIfNotScored(Segment const& newHead)
     }
 }
 
-void SnakeSegment::updateSegmentsIfSuccessfullMove(Segment const& newHead)
+void SnakeSegment::updateSegmentsIfSuccessfullMove(SnakeSegment::Segment const& newHead)
 {
     if (snake.isSegmentAtPosition(newHead.x, newHead.y) or world.isPositionOutsideMap(newHead.x, newHead.y)) {
         m_scorePort.send(std::make_unique<EventT<LooseInd>>());
