@@ -23,6 +23,9 @@ struct UnexpectedEventException : std::runtime_error
     UnexpectedEventException();
 };
 
+//class World;
+//class SnakeSegment;
+
 class Controller : public IEventHandler
 {
 public:
@@ -34,13 +37,16 @@ public:
     void receive(std::unique_ptr<Event> e) override;
 
 private:
+    // Controller
     IPort& m_displayPort;
     IPort& m_foodPort;
     IPort& m_scorePort;
 
-    std::pair<int, int> m_mapDimension;
-    std::pair<int, int> m_foodPosition;
+    // world
+    //std::pair<int, int> m_mapDimension;
+    //std::pair<int, int> m_foodPosition;
 
+    // Smake
     struct Segment
     {
         int x;
@@ -50,12 +56,14 @@ private:
     std::list<Segment> m_segments;
     Direction m_currentDirection;
 
+    // World
     void handleTimeoutInd();
     void handleDirectionInd(std::unique_ptr<Event>);
     void handleFoodInd(std::unique_ptr<Event>);
     void handleFoodResp(std::unique_ptr<Event>);
     void handlePauseInd(std::unique_ptr<Event>);
 
+    // Snake
     bool isSegmentAtPosition(int x, int y) const;
     Segment calculateNewHead() const;
     void updateSegmentsIfSuccessfullMove(Segment const& newHead);
@@ -63,13 +71,29 @@ private:
     void removeTailSegmentIfNotScored(Segment const& newHead);
     void removeTailSegment();
 
+    // World
     bool isPositionOutsideMap(int x, int y) const;
 
     void updateFoodPosition(int x, int y, std::function<void()> clearPolicy);
     void sendClearOldFood();
     void sendPlaceNewFood(int x, int y);
 
+    // Controller
     bool m_paused;
+};
+
+class World
+{
+private:
+    std::pair<int, int> m_mapDimension_;
+    std::pair<int, int> m_foodPosition_;
+public:
+    //World() = default;
+    void setmapDimension(std::pair<int, int> md ) { m_mapDimension_ = md; }
+    void setfoodPosition(std::pair<int, int> fp ) { m_foodPosition_ = fp; }
+
+    std::pair<int, int> getmapDimension() const { return m_mapDimension_; }
+    std::pair<int, int> getfoodPosition() const { return m_foodPosition_; };
 };
 
 } // namespace Snake
