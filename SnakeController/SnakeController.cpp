@@ -220,7 +220,7 @@ void Controller::receive(std::unique_ptr<Event> e)
 
     switch(std::uint32_t)
     {
-        case 0x10:
+        case 0x10:s
             handleDirectionChange();
         break;
 
