@@ -10,6 +10,7 @@ namespace Snake
 {
 class World world;
 class SnakeSegment snake;
+class Controller controller;
 
 ConfigurationError::ConfigurationError()
     : std::logic_error("Bad configuration of Snake::Controller.")
@@ -32,10 +33,7 @@ Controller::Controller(IPort& p_displayPort, IPort& p_foodPort, IPort& p_scorePo
     int foodX, foodY;
     istr >> w >> width >> height >> f >> foodX >> foodY >> s;
 
-    if (w == 'W' and f == 'F' and s == 'S') {
-        //m_mapDimension = std::make_pair(width, height);
-        //m_foodPosition = std::make_pair(foodX, foodY);
-        
+    if (w == 'W' and f == 'F' and s == 'S') {     
         world.setmapDimension(std::make_pair(width, height));
         world.setfoodPosition(std::make_pair(foodX, foodY));
 
@@ -59,9 +57,9 @@ Controller::Controller(IPort& p_displayPort, IPort& p_foodPort, IPort& p_scorePo
         istr >> length;
 
         while (length--) {
-            Segment seg;
+            auto& seg = snake.getSegment();
             istr >> seg.x >> seg.y;
-            m_segments.push_back(seg);
+            (snake.getSegments()).push_back(seg);
         }
     } else {
         throw ConfigurationError();
@@ -76,13 +74,11 @@ bool SnakeSegment::isSegmentAtPosition(int x, int y) const
 
 bool World::isPositionOutsideMap(int x, int y) const
 {
-    // return x < 0 or y < 0 or x >= m_mapDimension.first or y >= m_mapDimension.second;
     return x < 0 or y < 0 or x >= world.getfoodPosition().first or y >= world.getfoodPosition().second;
 }
 
 void World::sendPlaceNewFood(int x, int y)
 {
-    //m_foodPosition = std::make_pair(x, y);
     world.setfoodPosition(std::make_pair(x, y));
 
     DisplayInd placeNewFood;
@@ -90,7 +86,7 @@ void World::sendPlaceNewFood(int x, int y)
     placeNewFood.y = y;
     placeNewFood.value = Cell_FOOD;
 
-    m_displayPort.send(std::make_unique<EventT<DisplayInd>>(placeNewFood));
+    controller.getdisplayPort().send(std::make_unique<EventT<DisplayInd>>(placeNewFood));
 }
 
 void World::sendClearOldFood()
@@ -104,7 +100,7 @@ void World::sendClearOldFood()
 
     clearOldFood.value = Cell_FREE;
 
-    m_displayPort.send(std::make_unique<EventT<DisplayInd>>(clearOldFood));
+    controller.getdisplayPort().send(std::make_unique<EventT<DisplayInd>>(clearOldFood));
 }
 
 namespace
@@ -150,7 +146,7 @@ void SnakeSegment::removeTailSegment()
     l_evt.x = tail.x;
     l_evt.y = tail.y;
     l_evt.value = Cell_FREE;
-    m_displayPort.send(std::make_unique<EventT<DisplayInd>>(l_evt));
+    controller.getdisplayPort().send(std::make_unique<EventT<DisplayInd>>(l_evt));
 
     m_segments.pop_back();
 }
@@ -164,15 +160,15 @@ void SnakeSegment::addHeadSegment(SnakeSegment::Segment const& newHead)
     placeNewHead.y = newHead.y;
     placeNewHead.value = Cell_SNAKE;
 
-    m_displayPort.send(std::make_unique<EventT<DisplayInd>>(placeNewHead));
+    controller.getdisplayPort().send(std::make_unique<EventT<DisplayInd>>(placeNewHead));
 }
 
 void SnakeSegment::removeTailSegmentIfNotScored(SnakeSegment::Segment const& newHead)
 {
     //if (std::make_pair(newHead.x, newHead.y) == m_foodPosition)
     if (std::make_pair(newHead.x, newHead.y) == world.getfoodPosition()) {
-        m_scorePort.send(std::make_unique<EventT<ScoreInd>>());
-        m_foodPort.send(std::make_unique<EventT<FoodReq>>());
+        controller.getscorePort().send(std::make_unique<EventT<ScoreInd>>());
+        controller.getfoodPort().send(std::make_unique<EventT<FoodReq>>());
     } else {
         snake.removeTailSegment();
     }
@@ -181,7 +177,7 @@ void SnakeSegment::removeTailSegmentIfNotScored(SnakeSegment::Segment const& new
 void SnakeSegment::updateSegmentsIfSuccessfullMove(SnakeSegment::Segment const& newHead)
 {
     if (snake.isSegmentAtPosition(newHead.x, newHead.y) or world.isPositionOutsideMap(newHead.x, newHead.y)) {
-        m_scorePort.send(std::make_unique<EventT<LooseInd>>());
+        controller.getscorePort().send(std::make_unique<EventT<LooseInd>>());
     } else {
         snake.addHeadSegment(newHead);
         snake.removeTailSegmentIfNotScored(newHead);
@@ -205,7 +201,7 @@ void World::handleDirectionInd(std::unique_ptr<Event> e)
 void World::updateFoodPosition(int x, int y, std::function<void()> clearPolicy)
 {
     if (snake.isSegmentAtPosition(x, y) || world.isPositionOutsideMap(x,y)) {
-        m_foodPort.send(std::make_unique<EventT<FoodReq>>());
+        controller.getfoodPort().send(std::make_unique<EventT<FoodReq>>());
         return;
     }
 

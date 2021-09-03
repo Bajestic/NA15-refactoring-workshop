@@ -33,6 +33,14 @@ public:
 
     void receive(std::unique_ptr<Event> e) override;
 
+    void setdisplayPort(IPort dp) { m_displayPort = dp; }
+    void setfoodPort(IPort fp) { m_foodPort = fp; }
+    void setscorePort(IPort sp) { m_scorePort = sp; }
+
+    IPort& getdisplayPort() const { return m_displayPort; }
+    IPort& getfoodPort() const { return m_foodPort; }
+    IPort& getscorePort() const { return m_scorePort; }
+
 private:
     // Controller
     IPort& m_displayPort;
@@ -88,7 +96,8 @@ public:
     void setSegments( std::list<Segment> sg ) { m_segments = sg; }
     void setCurrentDirection( Direction cd ) { m_currentDirection = cd; }
 
-    std::list<Segment> getSegments() const { return m_segments; }
+    std::list<SnakeSegment::Segment>& getSegments() { return m_segments; }
     Direction getCurrentDirection() const { return m_currentDirection; }
+    Segment& getSegmet() { return Segment; }
 
 } // namespace Snake
