@@ -9,6 +9,7 @@
 namespace Snake
 {
 class World world;
+class SnakeSegment snake;
 
 ConfigurationError::ConfigurationError()
     : std::logic_error("Bad configuration of Snake::Controller.")
@@ -67,19 +68,19 @@ Controller::Controller(IPort& p_displayPort, IPort& p_foodPort, IPort& p_scorePo
     }
 }
 
-bool Controller::isSegmentAtPosition(int x, int y) const
+bool SnakeSegment::isSegmentAtPosition(int x, int y) const
 {
     return m_segments.end() !=  std::find_if(m_segments.cbegin(), m_segments.cend(),
         [x, y](auto const& segment){ return segment.x == x and segment.y == y; });
 }
 
-bool Controller::isPositionOutsideMap(int x, int y) const
+bool World::isPositionOutsideMap(int x, int y) const
 {
     // return x < 0 or y < 0 or x >= m_mapDimension.first or y >= m_mapDimension.second;
     return x < 0 or y < 0 or x >= world.getfoodPosition().first or y >= world.getfoodPosition().second;
 }
 
-void Controller::sendPlaceNewFood(int x, int y)
+void World::sendPlaceNewFood(int x, int y)
 {
     //m_foodPosition = std::make_pair(x, y);
     world.setfoodPosition(std::make_pair(x, y));
@@ -92,7 +93,7 @@ void Controller::sendPlaceNewFood(int x, int y)
     m_displayPort.send(std::make_unique<EventT<DisplayInd>>(placeNewFood));
 }
 
-void Controller::sendClearOldFood()
+void World::sendClearOldFood()
 {
     DisplayInd clearOldFood;
     //clearOldFood.x = m_foodPosition.first;
@@ -130,7 +131,7 @@ bool perpendicular(Direction dir1, Direction dir2)
 }
 } // namespace
 
-Controller::Segment Controller::calculateNewHead() const
+SnakeSegment::Segment SnakeSegment::calculateNewHead() const
 {
     Segment const& currentHead = m_segments.front();
 
@@ -141,7 +142,7 @@ Controller::Segment Controller::calculateNewHead() const
     return newHead;
 }
 
-void Controller::removeTailSegment()
+void SnakeSegment::removeTailSegment()
 {
     auto tail = m_segments.back();
 
@@ -154,7 +155,7 @@ void Controller::removeTailSegment()
     m_segments.pop_back();
 }
 
-void Controller::addHeadSegment(Segment const& newHead)
+void SnakeSegment::addHeadSegment(Segment const& newHead)
 {
     m_segments.push_front(newHead);
 
@@ -166,33 +167,33 @@ void Controller::addHeadSegment(Segment const& newHead)
     m_displayPort.send(std::make_unique<EventT<DisplayInd>>(placeNewHead));
 }
 
-void Controller::removeTailSegmentIfNotScored(Segment const& newHead)
+void SnakeSegment::removeTailSegmentIfNotScored(Segment const& newHead)
 {
     //if (std::make_pair(newHead.x, newHead.y) == m_foodPosition)
     if (std::make_pair(newHead.x, newHead.y) == world.getfoodPosition()) {
         m_scorePort.send(std::make_unique<EventT<ScoreInd>>());
         m_foodPort.send(std::make_unique<EventT<FoodReq>>());
     } else {
-        removeTailSegment();
+        snake.removeTailSegment();
     }
 }
 
-void Controller::updateSegmentsIfSuccessfullMove(Segment const& newHead)
+void SnakeSegment::updateSegmentsIfSuccessfullMove(Segment const& newHead)
 {
-    if (isSegmentAtPosition(newHead.x, newHead.y) or isPositionOutsideMap(newHead.x, newHead.y)) {
+    if (snake.isSegmentAtPosition(newHead.x, newHead.y) or world.isPositionOutsideMap(newHead.x, newHead.y)) {
         m_scorePort.send(std::make_unique<EventT<LooseInd>>());
     } else {
-        addHeadSegment(newHead);
-        removeTailSegmentIfNotScored(newHead);
+        snake.addHeadSegment(newHead);
+        snake.removeTailSegmentIfNotScored(newHead);
     }
 }
 
-void Controller::handleTimeoutInd()
+void World::handleTimeoutInd()
 {
-    updateSegmentsIfSuccessfullMove(calculateNewHead());
+    snake.updateSegmentsIfSuccessfullMove(snake.calculateNewHead());
 }
 
-void Controller::handleDirectionInd(std::unique_ptr<Event> e)
+void World::handleDirectionInd(std::unique_ptr<Event> e)
 {
     auto direction = payload<DirectionInd>(*e).direction;
 
@@ -201,32 +202,32 @@ void Controller::handleDirectionInd(std::unique_ptr<Event> e)
     }
 }
 
-void Controller::updateFoodPosition(int x, int y, std::function<void()> clearPolicy)
+void World::updateFoodPosition(int x, int y, std::function<void()> clearPolicy)
 {
-    if (isSegmentAtPosition(x, y) || isPositionOutsideMap(x,y)) {
+    if (snake.isSegmentAtPosition(x, y) || world.isPositionOutsideMap(x,y)) {
         m_foodPort.send(std::make_unique<EventT<FoodReq>>());
         return;
     }
 
     clearPolicy();
-    sendPlaceNewFood(x, y);
+    world.sendPlaceNewFood(x, y);
 }
 
-void Controller::handleFoodInd(std::unique_ptr<Event> e)
+void World::handleFoodInd(std::unique_ptr<Event> e)
 {
     auto receivedFood = payload<FoodInd>(*e);
 
-    updateFoodPosition(receivedFood.x, receivedFood.y, std::bind(&Controller::sendClearOldFood, this));
+    world.updateFoodPosition(receivedFood.x, receivedFood.y, std::bind(&World::sendClearOldFood, this));
 }
 
-void Controller::handleFoodResp(std::unique_ptr<Event> e)
+void World::handleFoodResp(std::unique_ptr<Event> e)
 {
     auto requestedFood = payload<FoodResp>(*e);
 
-    updateFoodPosition(requestedFood.x, requestedFood.y, []{});
+    world.updateFoodPosition(requestedFood.x, requestedFood.y, []{});
 }
 
-void Controller::handlePauseInd(std::unique_ptr<Event> e)
+void World::handlePauseInd(std::unique_ptr<Event> e)
 {
     m_paused = not m_paused;
 }
@@ -236,20 +237,20 @@ void Controller::receive(std::unique_ptr<Event> e)
     switch (e->getMessageId()) {
         case TimeoutInd::MESSAGE_ID:
             if (!m_paused) {
-                return handleTimeoutInd();
+                return world.handleTimeoutInd();
             }
             return;
         case DirectionInd::MESSAGE_ID:
             if (!m_paused) {
-                return handleDirectionInd(std::move(e));
+                return world.handleDirectionInd(std::move(e));
             }
             return;
         case FoodInd::MESSAGE_ID:
-            return handleFoodInd(std::move(e));
+            return world.handleFoodInd(std::move(e));
         case FoodResp::MESSAGE_ID:
-            return handleFoodResp(std::move(e));
+            return world.handleFoodResp(std::move(e));
         case PauseInd::MESSAGE_ID:
-            return handlePauseInd(std::move(e));
+            return world.handlePauseInd(std::move(e));
         default:
             throw UnexpectedEventException();
     }
