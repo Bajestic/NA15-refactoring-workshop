@@ -218,33 +218,26 @@ void Controller::receive(std::unique_ptr<Event> e)
     //<EventT<TimeoutInd> ex;
     std::uint32_t temp = e->getMessageId();
 
-    switch(std::uint32_t)
+    switch(temp)
     {
-        case 0x10:s
-            handleDirectionChange();
-        break;
+        case 0x10:
+            handleTimePassed();
+            break;
 
         case 0x20:
+            return handleDirectionInd(e);
+            break;
             
-        break;
-    }
-
-    try {
-        handleTimePassed(*dynamic_cast<EventT<TimeoutInd> const&>(*e));
-    } catch (0x10) {
-        try {
-            handleDirectionChange(*dynamic_cast<EventT<DirectionInd> const&>(*e));
-        } catch (std::bad_cast&) {
-            try {
-                handleFoodPositionChange(*dynamic_cast<EventT<FoodInd> const&>(*e));
-            } catch (std::bad_cast&) {
-                try {
-                    handleNewFood(*dynamic_cast<EventT<FoodResp> const&>(*e));
-                } catch (std::bad_cast&) {
-                   throw UnexpectedEventException();
-                }
-            }
-        }
+        case 0x30:
+            return handleFoodInd(e):
+            break;
+        
+        case 0x40:
+             return handlePauseInd(e);
+             break;
+            
+        case default:
+             UnexpectedEventException();
     }
 }
 
